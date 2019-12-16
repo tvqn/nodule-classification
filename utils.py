@@ -62,6 +62,6 @@ def check(raw_dir, data_dir):
             tem = os.path.join(tem, x)
             amount_data += len(os.listdir(tem))
         print(x, ":", amount_raw == amount_data)
-base_dir = 'E:\\thinkandstep\\nodule-texture-characterization'
+base_dir = os.getcwd()
 raw_dir = os.path.join(base_dir, 'raw_data')
 processRawData(raw_dir, [0.5, 0.25, 0.25], base_dir)
