@@ -53,6 +53,13 @@ def processRawData(raw_path, ratio, des_path):
             tem = os.path.join(raw_data_dir, y)
             shutil.copy(tem, path_of_class['test'][x])
 def check(raw_dir, data_dir):
+    """
+    Arg:
+    - raw_dir: path of raw data.(String)
+    - data_dir: path of data after divide
+    Return:
+    - Check accuracy of div data
+    """
     raw_class = os.listdir(raw_dir)
     for x in raw_class:
         amount_raw = len(os.listdir(os.path.join(raw_dir, x)))
