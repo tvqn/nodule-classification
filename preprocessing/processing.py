@@ -161,16 +161,24 @@ def saveData(PatienDict, base_dir, save_dir, augument = False, cube_size = 64, c
                     des = os.path.join(path_data['nodules'], cube_name)
                     if not os.path.exists(des):
                         np.save(des, scan_cube, allow_pickle= True)
-
+def removeAugument(path, nameAugument):
+    path_data = {}
+    path_data['nodules'] = os.path.join(path, 'nodules')
+    path_data['non-nodules'] = os.path.join(path, 'non-nodules')
+    for x in path_data.keys():
+        for f in os.listdir(path_data[x]):
+            if f.find(nameAugument) != -1:
+                target = os.path.join(path_data[x], f)
+                os.remove(target)
 if __name__ == '__main__':
     csvlines = readCsv('../rawdata/trainNodules_gt.csv')
     base_dir = '/media/whale/Storage/Google Drive/data-LNDb'
 
-    path = '../rawdata/trainNodules_gt.csv'
-    des = '../demo'
-    partData = {'train': 0.7, 'val': 0.1, 'test': 0.2}
-    labels = ['Nodule', 'Non-Nodule'] 
-    divData(path, partData, des, labels)
+    # path = '../rawdata/trainNodules_gt.csv'
+    # des = '../demo'
+    # partData = {'train': 0.7, 'val': 0.1, 'test': 0.2}
+    # labels = ['Nodule', 'Non-Nodule'] 
+    # divData(path, partData, des, labels)
 
 
     des_dir = '/media/whale/Storage/Google Drive/data3'
@@ -180,10 +188,17 @@ if __name__ == '__main__':
     for path in lstPath.values():
         makeTreeDir(path, lstClass)
 
-    csvPath = '/media/whale/Extract Code/thinkandstep/nodule-classification/demo'
-    for part in lstDir:
-        csv_path = os.path.join(csvPath, part + '.csv')
-        PatienDict, numCandidate = makePatienDict(csv_path)
+    # csvPath = '/media/whale/Extract Code/thinkandstep/nodule-classification/demo'
+    # for part in lstDir:
+    #     csv_path = os.path.join(csvPath, part + '.csv')
+    #     PatienDict, numCandidate = makePatienDict(csv_path)
 
-        save_dir = lstPath[part]
-        saveData(PatienDict, base_dir, save_dir, augument = True)
+    #     save_dir = lstPath[part]
+    #     if part == 'train':
+    #         saveData(PatienDict, base_dir, save_dir, augument = True)
+    #     else:
+    #         saveData(PatienDict, base_dir, save_dir)
+    
+    for part in ['val', 'test']:
+        path = lstPath[part]
+        removeAugument(path, 'permute')
