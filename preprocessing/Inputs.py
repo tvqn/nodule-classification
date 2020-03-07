@@ -6,6 +6,16 @@ import augument as A
 
 def makeBlance():
     pass
+
+def countCandiate(base_dir):
+    labels = ['non-nodules', 'nodules']
+
+    count = dict.fromkeys(labels, 0)
+    for i, x in enumerate(labels):
+        path = os.path.join(base_dir, x)
+        count[x] += len(os.listdir(path))
+    return count
+
 def makeBatch(base_dir, batch_size, size = 64):
     labels = ['non-nodules', 'nodules']
 
@@ -31,16 +41,14 @@ def makeBatch(base_dir, batch_size, size = 64):
     yield np.asarray(batchData), batchLabel
 
 def test():
-    base_dir = '/media/whale/Storage/Google Drive/data3/test'
+    base_dir = '/media/whale/Storage/Google Drive/data3/train'
     batchData = makeBatch(base_dir, 7, size = 64)
-
+    print(sum(countCandiate(base_dir).values()))
     c = 0
     for tensor, labels in batchData:
         print(tensor.shape)
         print(labels)
 
         c+=1
-        if c == 10:
+        if c == 1:
             break
-
-test()
