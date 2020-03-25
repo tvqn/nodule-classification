@@ -4,6 +4,7 @@ import matplotlib
 import os
 import numpy as np
 import csv
+import shutil
 
 import augument as A
 
@@ -116,7 +117,7 @@ def makePatienDict(pathCSV):
             tempDict = {}
 
     return PatienDict, numCandidate
-import shutil
+
 def saveData(PatienDict, base_dir, save_dir, augument = False, cube_size = 64, cube_size_mm = 51):
     path_data = {}
     path_data['nodules'] = os.path.join(save_dir, 'nodules')
@@ -127,14 +128,14 @@ def saveData(PatienDict, base_dir, save_dir, augument = False, cube_size = 64, c
         nameCTScan = 'LNDb-{:04}.mhd'.format(int(patient)) 
         path = os.path.join(base_dir, nameCTScan)
         [scan,spacing,origin,transfmat] =  readMhd(path)#have not been optimizer
-
+        
         for nodule in PatienDict[patient]:
-            # ctr = np.array(nodule['XYZ'])   
-            # transfmat_toimg,transfmat_toworld = getImgWorldTransfMats(spacing,transfmat)
-            # ctr = convertToImgCoord(ctr,origin,transfmat_toimg)
+            ctr = np.array(nodule['XYZ'])   
+            transfmat_toimg,transfmat_toworld = getImgWorldTransfMats(spacing,transfmat)
+            ctr = convertToImgCoord(ctr,origin,transfmat_toimg)
 
-            # scan_cube = extractCube(scan= scan, spacing= spacing, xyz= ctr, cube_size= cube_size, cube_size_mm= cube_size_mm)
-            scan_cube = 0
+            scan_cube = extractCube(scan= scan, spacing= spacing, xyz= ctr, cube_size= cube_size, cube_size_mm= cube_size_mm)
+    
             #Check data exists or save
             if int(nodule['Label']) == 1:
                 cube_name = 'LNDb-{:04}-find-{:02}.npy'.format(int(patient), int(nodule['findID']))
@@ -147,7 +148,20 @@ def saveData(PatienDict, base_dir, save_dir, augument = False, cube_size = 64, c
                     cube_name = 'LNDb-{:04}-find-{:02}-permute-{}.npy'.format(int(patient), int(nodule['findID']), i)
                     des = os.path.join(path_data['nodules'], cube_name)
                     if not os.path.exists(des):
+                        np.save(des, cube, allow_pickle= True)
+
+                for i, xyz in enumerate(A.listCrop(ctr, 2)):
+                    cube_name = 'LNDb-{:04}-find-{:02}-crop-{}.npy'.format(int(patient), int(nodule['findID']), i)
+                    des = os.path.join(path_data['nodules'], cube_name)
+                    scan_cube = extractCube(scan= scan, spacing= spacing, xyz= xyz, cube_size= cube_size, cube_size_mm= cube_size_mm)
+                    if not os.path.exists(des):
                         np.save(des, scan_cube, allow_pickle= True)
+
+                    # for k, cube in enumerate(A.permute_3D(scan_cube)):
+                    #     cube_name = 'LNDb-{:04}-find-{:02}-crop-permute-{}-{}.npy'.format(int(patient), int(nodule['findID']), i, k)
+                    #     des = os.path.join(path_data['nodules'], cube_name)
+                    #     if not os.path.exists(des):
+                    #         np.save(des, cube, allow_pickle= True)
             else:
                 cube_name = 'LNDb-{:04}-find-{:02}.npy'.format(int(patient), int(nodule['findID']))
                 des = os.path.join(path_data['non-nodules'], cube_name)
@@ -158,13 +172,22 @@ def saveData(PatienDict, base_dir, save_dir, augument = False, cube_size = 64, c
                     continue
                 for i, cube in enumerate(A.permute_3D(scan_cube)):
                     cube_name = 'LNDb-{:04}-find-{:02}-permute-{}.npy'.format(int(patient), int(nodule['findID']), i)
-                    des = os.path.join(path_data['nodules'], cube_name)
+                    des = os.path.join(path_data['non-nodules'], cube_name)
                     if not os.path.exists(des):
-                        pass
-                        #np.save(des, scan_cube, allow_pickle= True)
-                    else:
-                        alt = os.path.join(path_data['non-nodules'], cube_name)
-                        shutil.move(des, alt)
+                        np.save(des, cube, allow_pickle= True)
+                
+                for i, xyz in enumerate(A.listCrop(ctr, 2)):
+                    cube_name = 'LNDb-{:04}-find-{:02}-crop-{}.npy'.format(int(patient), int(nodule['findID']), i)
+                    des = os.path.join(path_data['non-nodules'], cube_name)
+                    scan_cube = extractCube(scan= scan, spacing= spacing, xyz= xyz, cube_size= cube_size, cube_size_mm= cube_size_mm)
+                    if not os.path.exists(des):
+                        np.save(des, scan_cube, allow_pickle= True)
+
+                    # for k, cube in enumerate(A.permute_3D(scan_cube)):
+                    #     cube_name = 'LNDb-{:04}-find-{:02}-crop-permute-{}-{}.npy'.format(int(patient), int(nodule['findID']), i, k)
+                    #     des = os.path.join(path_data['non-nodules'], cube_name)
+                    #     if not os.path.exists(des):
+                    #         np.save(des, cube, allow_pickle= True)
 def removeAugument(path, nameAugument):
     path_data = {}
     path_data['nodules'] = os.path.join(path, 'nodules')
@@ -174,35 +197,67 @@ def removeAugument(path, nameAugument):
             if f.find(nameAugument) != -1:
                 target = os.path.join(path_data[x], f)
                 os.remove(target)
+def divSubTrain(base_dir: str, des: str, subs: int):
+    labels = ['non-nodules', 'nodules']
+
+    for sub in range(subs):
+        subdir = os.path.join(des, 'sub{}'.format(sub))
+        os.makedirs(subdir, exist_ok=True)
+
+    for label in labels:
+
+        path = os.path.join(base_dir, label)
+        data = os.listdir(path)
+
+        size = int(len(data)/subs + 1)
+        for sub in range(subs):
+            subdir = os.path.join(des, 'sub{}'.format(sub))
+            temPath = os.path.join(subdir, label)
+            os.makedirs(temPath, exist_ok=True)
+            '''
+            for x in os.listdir(temPath):
+                temFile = os.path.join(temPath, x)
+                shutil.move(temFile, path)
+            '''            
+            if size >= len(data):
+                for x in data:
+                    temFile = os.path.join(path, x)
+                    shutil.move(temFile, temPath)
+            else:
+                for x in data[:size]:
+                    temFile = os.path.join(path, x)
+                    shutil.move(temFile, temPath)
+                data = data[size:]
 if __name__ == '__main__':
-    csvlines = readCsv('../rawdata/trainNodules_gt.csv')
-    base_dir = '/media/whale/Storage/Google Drive/data-LNDb'
+    # base_dir = '/media/whale/Storage/Google Drive/data-LNDb'
 
-    path = '../rawdata/trainNodules_gt.csv'
-    des = '../demo'
-    partData = {'train': 0.7, 'val': 0.1, 'test': 0.2}
-    labels = ['Nodule', 'Non-Nodule'] 
-    divData(path, partData, des, labels)
+    # path = '../rawdata/trainNodules_gt.csv'
+    # des = '../demo'
+    # partData = {'train': 0.7, 'val': 0.1, 'test': 0.2}
+    # labels = ['Nodule', 'Non-Nodule'] 
+    # divData(path, partData, des, labels)
 
 
-    des_dir = '/media/whale/Storage/Google Drive/data3'
-    lstDir = ['train', 'test', 'val']
-    lstPath = makeTreeDir(des_dir, lstDir)
-    lstClass = ['nodules', 'non-nodules']
-    for path in lstPath.values():
-        makeTreeDir(path, lstClass)
+    # des_dir = '/media/whale/Storage/Google Drive/data3'
+    # lstDir = ['train', 'test', 'val']
+    # lstPath = makeTreeDir(des_dir, lstDir)
+    # lstClass = ['nodules', 'non-nodules']
+    # for path in lstPath.values():
+    #     makeTreeDir(path, lstClass)
 
-    csvPath = '/media/whale/Extract Code/thinkandstep/nodule-classification/demo'
-    for part in lstDir:
-        csv_path = os.path.join(csvPath, part + '.csv')
-        PatienDict, numCandidate = makePatienDict(csv_path)
+    # csvPath = '/media/whale/Extract Code/thinkandstep/nodule-classification/demo'
+    # for part in lstDir:
+    #     csv_path = os.path.join(csvPath, part + '.csv')
+    #     PatienDict, numCandidate = makePatienDict(csv_path)
 
-        save_dir = lstPath[part]
-        if part == 'train':
-            saveData(PatienDict, base_dir, save_dir, augument = True)
-        else:
-            saveData(PatienDict, base_dir, save_dir)
-    
-    # for part in ['val', 'test']:
+    #     save_dir = lstPath[part]
+    #     if part == 'train':
+    #         saveData(PatienDict, base_dir, save_dir, augument = True)
+    #     else:
+    #         saveData(PatienDict, base_dir, save_dir)
+    base_dir = '/media/whale/Storage/Google Drive/data3/train'
+    des = '/media/whale/Storage/Google Drive/data3/train'
+    divSubTrain(base_dir, des, 10)
+    # for part in ['train']:
     #     path = lstPath[part]
     #     removeAugument(path, 'permute')
