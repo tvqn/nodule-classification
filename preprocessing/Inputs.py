@@ -3,7 +3,7 @@ import numpy as np
 import os
 import csv
 import augument as A
-
+import normalize as N
 def makeBlance():
     pass
 
@@ -22,6 +22,7 @@ def makeBatch(base_dir, batch_size, size = 64):
     count = 0
     batchData = []
     batchLabel = []
+    batchName = []
     for i, x in enumerate(labels):
         path = os.path.join(base_dir, x)
         for name in os.listdir(path):
@@ -31,11 +32,13 @@ def makeBatch(base_dir, batch_size, size = 64):
                 count = 0
                 batchLabel = []
                 batchData = []
+                batchName = []
             target_path = os.path.join(path, name)
             target = np.load(target_path).reshape((1, size, size, size))
             ele = np.concatenate((target, target, target), axis = 0)#Add channel
             batchData.append(ele)
             batchLabel.append(i)
+            batchName.append(name)
             count += 1
             
     yield np.asarray(batchData), batchLabel
