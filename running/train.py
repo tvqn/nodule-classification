@@ -64,7 +64,6 @@ def train(model, criterion, optimizer, batchsize, Data, size, save_path, num_epo
                 # statistics
                 running_loss += loss.item() * inputs.size(0)
                 running_corrects += torch.sum(preds == labels.data)
-                break
 
             print("Amount: ", numCandidate)
             epoch_loss = running_loss / numCandidate
@@ -157,6 +156,7 @@ def re_train(model, criterion, optimizer, batchsize, Data, size, save_path, star
                 # statistics
                 running_loss += loss.item() * inputs.size(0)
                 running_corrects += torch.sum(preds == labels.data)
+
                 break
 
             print("Amount: ", numCandidate)
